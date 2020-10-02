@@ -63,6 +63,7 @@ var downloadTemplate = `
   <button class="ui basic blue download button"><i class="download icon"></i></button>
   <button class="ui disabled basic red pause button"><i class="pause icon"></i></button>
   <button class="ui disabled basic green resume button"><i class="play icon"></i></button>
+  <button class="ui basic yellow browser button open-in-browser"><i class="desktop icon"></i></button>
 </div>
 <div class="ui horizontal divider"></div>
 <div class="ui tiny indicating individual progress">
@@ -87,59 +88,6 @@ $(".ui.login #business").change(function() {
 
 checkLogin();
 
-// $('.ui.login .form').submit((e)=>{
-// e.preventDefault();
-// var email = $(e.target).find('input[name="email"]').val();
-// var password = $(e.target).find('input[name="password"]').val();
-// var isBusiness = $(e.target).find('input[name="business"]').is(":checked");
-
-// if(isBusiness){
-//     subDomain = $(e.target).find('input[name="subdomain"]').val() || subDomain;
-// }
-
-// if(!email || !password){
-//    prompt.alert(translate("Type Username/Password"));
-//    return;
-// }
-
-// $.ajax({
-//    type: 'POST',
-//    url:'https://www.udemy.com/api-2.0/auth/udemy-auth/login/?fields[user]=access_token',
-//    data: {email:email,password:password},
-//    headers: {"Authorization": "Basic YWQxMmVjYTljYmUxN2FmYWM2MjU5ZmU1ZDk4NDcxYTY6YTdjNjMwNjQ2MzA4ODI0YjIzMDFmZGI2MGVjZmQ4YTA5NDdlODJkNQ=="},
-//    beforeSend: function(){
-//      $(".ui.login .dimmer").addClass('active');
-//    },
-//     success: function(data, status, xhr){
-//       if(data.access_token){
-//         $('.ui.login').slideUp('fast');
-//         $('.ui.dashboard').fadeIn('fast').css('display','flex');
-//         settings.set('access_token',data.access_token);
-//         headers = {"Authorization": `Bearer ${data.access_token}`};
-//               $.ajax({
-//                type: 'GET',
-//                url: `https://${subDomain}.udemy.com/api-2.0/users/me/subscribed-courses?page_size=50`,
-//                beforeSend: function(){
-//                    $(".ui.dashboard .courses.dimmer").addClass('active');
-//                },
-//                headers: headers,
-//                success: function(response){
-//                   handleResponse(response);
-//                }
-//             });
-//         }
-// },
-//   error:function(response){
-//     if(response.status==400){
-//       prompt.alert(translate('Incorrect Username/Password'));
-//     }else{
-//       prompt.alert(translate('Connection Failed'));
-//     }
-//   }
-// });
-
-// });
-
 $(".ui.dashboard .content").on("click", ".download-success", function() {
   $(this).hide();
   $(this)
@@ -147,6 +95,12 @@ $(".ui.dashboard .content").on("click", ".download-success", function() {
     .find(".download-status")
     .show();
 });
+
+$(".ui.dashboard .content").on("click", ".open-in-browser",function() {
+  const link = `https://www.udemy.com${$(this).parents(".course.item").attr('course-url')}`;
+  shell.openExternal(link);
+});
+
 
 $(".ui.dashboard .content").on("click", ".load-more.button", function() {
   var $this = $(this);
@@ -1493,17 +1447,19 @@ settingsForm.find('input[name="enabledownloadstartend"]').change(function() {
 });
 
 function selectDownloadPath() {
-  dialog.showOpenDialog({ properties: ["openDirectory"] }, function(path) {
-    if (path) {
-      fs.access(path[0], fs.R_OK && fs.W_OK, function(err) {
-        if (err) {
-          prompt.alert(translate("Cannot select this folder"));
-        } else {
-          settingsForm.find('input[name="downloadpath"]').val(path[0]);
-        }
-      });
-    }
+  const path = dialog.showOpenDialogSync({
+    properties: ["openDirectory"]
   });
+
+  if (path[0]) {
+    fs.access(path[0], fs.R_OK && fs.W_OK, function(err) {
+      if (err) {
+        prompt.alert(translate("Cannot select this folder"));
+      } else {
+        settingsForm.find('input[name="downloadpath"]').val(path[0]);
+      }
+    });
+  }
 }
 
 function handleResponse(response, keyword = "") {
@@ -1513,7 +1469,7 @@ function handleResponse(response, keyword = "") {
   if (response.results.length) {
     $.each(response.results, function(index, course) {
       $(".ui.dashboard .ui.courses.section .ui.courses.items").append(`
-                  <div class="ui course item" course-id="${
+                  <div class="ui course item course-item" course-id="${
                     course.id
                   }" course-url="${course.url}">
                   <div class="ui tiny label download-quality grey"></div>
@@ -1566,6 +1522,9 @@ function handleResponse(response, keyword = "") {
       )}</div>`
     );
   }
+
+
+
 }
 
 function saveDownloads(quit) {
